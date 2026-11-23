@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Flame,
   KeyRound,
   MessageSquare,
   Pause,
@@ -20,6 +21,7 @@ import {
   Zap
 } from "lucide-react";
 import { exportDispatchCsv, exportWhatsAppLinksHtml } from "../randomizer";
+import { getSavedFast2SMSConfig, sendFast2SMSBatchApi } from "../fast2smsService";
 import { getSavedTwilioConfig, sendTwilioBatchApi } from "../twilioService";
 import type { DispatchRun } from "../types";
 
@@ -45,8 +47,100 @@ export function LiveDispatchView({
   const isWhatsAppManual = run?.channel === "whatsapp_web";
   const isWhatsApp = isWhatsAppAuto || isWhatsAppManual;
   const isTwilio = run?.channel === "twilio";
+  const isFast2SMS = run?.channel === "fast2sms";
   const isRunning = run?.status === "running";
   const isComplete = run?.status === "complete";
+
+  // FAST2SMS INDIA DISPATCH
+  useEffect(() => {
+    if (!run || run.channel !== "fast2sms" || run.status !== "running") return;
+    if (run.sent > 0 || run.failed > 0 || autoBlastedRef.current === run.id) return;
+
+    autoBlastedRef.current = run.id;
+    void executeFast2SMSDispatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.id, run?.channel, run?.status]);
+
+  async function executeFast2SMSDispatch() {
+    if (!run) return;
+    setIsBlasting(true);
+
+    try {
+      const config = getSavedFast2SMSConfig();
+      const batchItems = run.items.map((it) => ({
+        id: it.id,
+        name: it.name,
+        phone: it.phone,
+        message: it.message
+      }));
+
+      const res = await sendFast2SMSBatchApi(config, batchItems);
+
+      if (res.success && res.results && res.results.length > 0) {
+        const resultMap = new Map(res.results.map((r) => [r.id, r]));
+        let sentCount = 0;
+        let failedCount = 0;
+
+        const updatedItems = run.items.map((it) => {
+          const r = resultMap.get(it.id);
+          if (r) {
+            if (r.status === "sent") sentCount++;
+            else failedCount++;
+            return {
+              ...it,
+              status: r.status,
+              fast2smsRequestId: r.requestId,
+              error: r.error,
+              timestamp: r.timestamp
+            };
+          }
+          return it;
+        });
+
+        onUpdateRun({
+          ...run,
+          sent: sentCount,
+          failed: failedCount,
+          status: "complete",
+          items: updatedItems
+        });
+      } else {
+        const sendTime = new Date().toLocaleTimeString();
+        const updatedItems = run.items.map((it) => ({
+          ...it,
+          status: "failed" as const,
+          error: res.error || "Fast2SMS dispatch rejected",
+          timestamp: sendTime
+        }));
+
+        onUpdateRun({
+          ...run,
+          sent: 0,
+          failed: run.total,
+          status: "complete",
+          items: updatedItems
+        });
+      }
+    } catch (err: any) {
+      const sendTime = new Date().toLocaleTimeString();
+      const updatedItems = run.items.map((it) => ({
+        ...it,
+        status: "failed" as const,
+        error: err.message || "Failed to reach Fast2SMS gateway",
+        timestamp: sendTime
+      }));
+
+      onUpdateRun({
+        ...run,
+        sent: 0,
+        failed: run.total,
+        status: "complete",
+        items: updatedItems
+      });
+    } finally {
+      setIsBlasting(false);
+    }
+  }
 
   // TWILIO REAL TELECOM DISPATCH
   useEffect(() => {
@@ -206,7 +300,7 @@ export function LiveDispatchView({
 
   // Automated loop for Simulation mode (step-by-step progress simulation)
   useEffect(() => {
-    if (!run || run.status !== "running" || run.channel === "whatsapp_web" || run.channel === "whatsapp_auto" || run.channel === "twilio") {
+    if (!run || run.status !== "running" || run.channel === "whatsapp_web" || run.channel === "whatsapp_auto" || run.channel === "twilio" || run.channel === "fast2sms") {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -444,8 +538,16 @@ export function LiveDispatchView({
           <ArrowLeft size={16} /> Back to Message Composer
         </button>
         <div className="dispatch-session-meta">
-          <span className={`mode-pill ${isTwilio ? "mode-pill-twilio" : isWhatsApp ? "mode-pill-wa" : ""}`}>
-            {isTwilio ? (
+          <span
+            className={`mode-pill ${
+              isFast2SMS ? "mode-pill-fast2sms" : isTwilio ? "mode-pill-twilio" : isWhatsApp ? "mode-pill-wa" : ""
+            }`}
+          >
+            {isFast2SMS ? (
+              <>
+                <Flame size={14} color="#ea580c" /> Fast2SMS India Cellular (~₹0.18)
+              </>
+            ) : isTwilio ? (
               <>
                 <KeyRound size={14} color="#f22f46" /> Twilio Real Telecom Gateway
               </>
@@ -469,6 +571,74 @@ export function LiveDispatchView({
           </span>
         </div>
       </div>
+
+      {/* FAST2SMS INDIA HERO CARD */}
+      {isFast2SMS && (
+        <section className="panel fast2sms-hero-card">
+          <div className="fast2sms-hero-header">
+            <div className="fast2sms-hero-badge">
+              <Flame size={16} /> Fast2SMS India Cellular Gateway (~₹0.18/SMS)
+            </div>
+            <span className="fast2sms-counter">
+              {run.sent} delivered, {run.failed} rejected / {run.total} total
+            </span>
+          </div>
+
+          <div className="fast2sms-hero-content">
+            {isBlasting ? (
+              <div className="twilio-blasting-state">
+                <Flame size={28} className="spin-fast" style={{ color: "#ea580c" }} />
+                <h3>Dispatching SMS across Indian mobile networks via Fast2SMS...</h3>
+                <p>Delivering text messages via Quick SMS route at ~₹0.18 per SMS.</p>
+              </div>
+            ) : isComplete ? (
+              <div className="fast2sms-blast-complete-banner">
+                <div
+                  className="blast-check-icon"
+                  style={{
+                    background: run.failed > 0 && run.sent === 0 ? "#fee2e2" : "#ffedd5",
+                    color: run.failed > 0 && run.sent === 0 ? "#dc2626" : "#ea580c"
+                  }}
+                >
+                  {run.sent > 0 ? <CheckCircle2 size={30} /> : <AlertCircle size={30} />}
+                </div>
+                <div>
+                  <h3>
+                    {run.sent > 0
+                      ? `Fast2SMS Dispatched ${run.sent} of ${run.total} SMS Successfully!`
+                      : `Fast2SMS Dispatch Completed with Errors`}
+                  </h3>
+                  <p>
+                    {run.sent > 0
+                      ? "Cellular SMS messages have been routed to Indian mobile towers. Check Request IDs in the log table below."
+                      : "Fast2SMS rejected one or more requests. Check the error descriptions (e.g. invalid API key or non-Indian number)."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3>Ready to dispatch {run.total} cellular SMS messages via Fast2SMS</h3>
+                <p>Messages will be delivered straight to Indian recipient handsets for ~₹0.18 each.</p>
+              </div>
+            )}
+
+            <div className="wa-auto-actions-row">
+              <button
+                className="button primary fast2sms-blast-now-btn"
+                disabled={isBlasting}
+                onClick={executeFast2SMSDispatch}
+              >
+                <Flame size={17} />
+                {isComplete ? "Re-send Batch via Fast2SMS" : `Dispatch ${run.total} SMS via Fast2SMS Now`}
+              </button>
+
+              <button className="button secondary" onClick={handleExportCsv}>
+                <Download size={15} /> Export Fast2SMS Logs (CSV)
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* TWILIO REAL GATEWAY HERO CARD */}
       {isTwilio && (
@@ -808,7 +978,21 @@ export function LiveDispatchView({
                   </td>
                   <td>
                     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                      {isTwilio ? (
+                      {isFast2SMS ? (
+                        <>
+                          <span className="item-time">{item.timestamp || "Queued"}</span>
+                          {item.fast2smsRequestId && (
+                            <code className="fast2sms-sid-pill" title={`Fast2SMS Req ID: ${item.fast2smsRequestId}`}>
+                              Req: {item.fast2smsRequestId.slice(0, 10)}...
+                            </code>
+                          )}
+                          {item.error && (
+                            <span className="twilio-error-pill" title={item.error}>
+                              {item.error.length > 25 ? `${item.error.slice(0, 25)}...` : item.error}
+                            </span>
+                          )}
+                        </>
+                      ) : isTwilio ? (
                         <>
                           <span className="item-time">{item.timestamp || "Queued"}</span>
                           {item.twilioSid && (

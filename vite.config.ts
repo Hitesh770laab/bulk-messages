@@ -51,6 +51,58 @@ async function sendSingleTwilioMessage(
   }
 }
 
+function toFast2SMSNumber(raw: string): string {
+  const digits = String(raw || "").replace(/\D/g, "");
+  return digits.slice(-10);
+}
+
+async function sendSingleFast2SMS(
+  apiKey: string,
+  route: string,
+  phone: string,
+  message: string,
+  senderId?: string
+): Promise<{ success: boolean; requestId?: string; error?: string }> {
+  const cleanPhone = toFast2SMSNumber(phone);
+  if (cleanPhone.length !== 10) {
+    return { success: false, error: "Invalid 10-digit Indian mobile number" };
+  }
+
+  const payload: any = {
+    route: route || "q",
+    message: message || "Message from MessageFlow",
+    language: "english",
+    flash: 0,
+    numbers: cleanPhone
+  };
+  if (senderId) {
+    payload.sender_id = senderId;
+  }
+
+  try {
+    const response = await (globalThis as any).fetch("https://www.fast2sms.com/dev/bulkV2", {
+      method: "POST",
+      headers: {
+        authorization: apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await response.json();
+    if (json.return === true) {
+      return { success: true, requestId: json.request_id };
+    } else {
+      const errorMsg = Array.isArray(json.message)
+        ? json.message.join(", ")
+        : json.message || `Fast2SMS error code: ${json.status_code || "Unknown"}`;
+      return { success: false, error: errorMsg };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to reach Fast2SMS gateway" };
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -149,6 +201,106 @@ export default defineConfig({
                     phone: item.phone,
                     status: res.success ? "sent" : "failed",
                     sid: res.sid,
+                    error: res.error,
+                    timestamp: new Date().toLocaleTimeString()
+                  };
+                })
+              );
+
+              res.setHeader("Content-Type", "application/json");
+              res.statusCode = 200;
+              res.end(JSON.stringify({ success: true, count: results.length, results }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+        });
+
+        // Fast2SMS single test message endpoint
+        server.middlewares.use("/api/fast2sms/test", (req: any, res: any) => {
+          if (req.method !== "POST") {
+            res.statusCode = 405;
+            res.end("Method Not Allowed");
+            return;
+          }
+
+          let body = "";
+          req.on("data", (chunk: any) => {
+            body += chunk;
+          });
+
+          req.on("end", async () => {
+            try {
+              const data = JSON.parse(body || "{}");
+              const { apiKey, route, testPhone, message, senderId } = data;
+
+              if (!apiKey) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "Missing Fast2SMS API Key" }));
+                return;
+              }
+
+              const result = await sendSingleFast2SMS(apiKey, route || "q", testPhone, message, senderId);
+              res.statusCode = result.success ? 200 : 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(result));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+        });
+
+        // Fast2SMS bulk send batch endpoint
+        server.middlewares.use("/api/fast2sms/send-batch", (req: any, res: any) => {
+          if (req.method !== "POST") {
+            res.statusCode = 405;
+            res.end("Method Not Allowed");
+            return;
+          }
+
+          let body = "";
+          req.on("data", (chunk: any) => {
+            body += chunk;
+          });
+
+          req.on("end", async () => {
+            try {
+              const data = JSON.parse(body || "{}");
+              const { apiKey, route, items, senderId } = data;
+
+              if (!apiKey) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "Missing Fast2SMS API Key" }));
+                return;
+              }
+
+              if (!Array.isArray(items) || items.length === 0) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "No recipient items provided in batch" }));
+                return;
+              }
+
+              const results = await Promise.all(
+                items.map(async (item: any) => {
+                  const res = await sendSingleFast2SMS(
+                    apiKey,
+                    route || "q",
+                    item.phone,
+                    item.message,
+                    senderId
+                  );
+                  return {
+                    id: item.id,
+                    phone: item.phone,
+                    status: res.success ? "sent" : "failed",
+                    requestId: res.requestId,
                     error: res.error,
                     timestamp: new Date().toLocaleTimeString()
                   };

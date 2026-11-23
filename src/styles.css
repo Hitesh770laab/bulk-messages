@@ -1924,3 +1924,172 @@ button:disabled { cursor: not-allowed; opacity: .52; }
   border-radius: 4px;
   display: inline-block;
 }
+
+/* =========================================================================
+   FAST2SMS INDIA GATEWAY STYLES (~₹0.18/SMS)
+   ========================================================================= */
+
+.channel-choice-btn.active-fast2sms {
+  border-color: #ea580c;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.channel-choice-btn.active-fast2sms svg {
+  color: #ea580c;
+}
+
+.fast2sms-notice-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fffaf5;
+  border: 1px solid #fed7aa;
+  flex-wrap: wrap;
+}
+
+.fast2sms-launch-btn {
+  background: #ea580c !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+}
+
+.fast2sms-launch-btn:hover {
+  background: #c2410c !important;
+}
+
+.fast2sms-modal {
+  max-width: 580px;
+}
+
+.fast2sms-icon {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.fast2sms-route-select {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.fast2sms-route-select button {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.fast2sms-route-select button strong {
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.fast2sms-route-select button span {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.fast2sms-route-select button.active {
+  border-color: #ea580c;
+  background: #fff7ed;
+}
+
+.fast2sms-route-select button.active strong {
+  color: #c2410c;
+}
+
+.fast2sms-hero-card {
+  border-color: #fed7aa;
+  background: linear-gradient(135deg, #fffaf5 0%, #fff7ed 100%);
+  margin-bottom: 16px;
+}
+
+.fast2sms-hero-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #fed7aa;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.fast2sms-hero-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.fast2sms-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a3412;
+  background: #ffedd5;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.fast2sms-hero-content h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: #9a3412;
+}
+
+.fast2sms-hero-content p {
+  margin: 0;
+  font-size: 12px;
+  color: #c2410c;
+  line-height: 1.5;
+}
+
+.fast2sms-blast-complete-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  margin-bottom: 16px;
+}
+
+.fast2sms-blast-now-btn {
+  background: #ea580c !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  padding: 0 18px !important;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25) !important;
+}
+
+.mode-pill-fast2sms {
+  border-color: #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.fast2sms-sid-pill {
+  font-size: 10px;
+  background: #ffedd5;
+  color: #9a3412;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+}

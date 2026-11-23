@@ -32,7 +32,7 @@ export interface Activity {
 
 export type MessageMode = "single" | "random_pool";
 export type DispatchTarget = "all" | "opted_in";
-export type DeliveryChannel = "twilio" | "whatsapp_auto" | "whatsapp_web" | "whatsapp_api" | "device_sms" | "simulation";
+export type DeliveryChannel = "fast2sms" | "twilio" | "whatsapp_auto" | "whatsapp_web" | "whatsapp_api" | "device_sms" | "simulation";
 
 export interface DispatchItem {
   id: string;
@@ -42,6 +42,7 @@ export interface DispatchItem {
   message: string;
   whatsappUrl?: string;
   twilioSid?: string;
+  fast2smsRequestId?: string;
   status: "queued" | "sending" | "sent" | "failed";
   timestamp?: string;
   error?: string;

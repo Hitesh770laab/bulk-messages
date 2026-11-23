@@ -5,6 +5,7 @@ import {
   Dices,
   Download,
   Eye,
+  Flame,
   KeyRound,
   MessageSquare,
   Plus,
@@ -23,6 +24,7 @@ import {
   assignMessagesToContacts,
   exportWhatsAppLinksHtml
 } from "../randomizer";
+import type { Fast2SMSConfig } from "../fast2smsService";
 import type { TwilioConfig } from "../twilioService";
 import type {
   Contact,
@@ -35,7 +37,9 @@ import type {
 interface BulkSenderViewProps {
   contacts: Contact[];
   twilioConfig: TwilioConfig;
+  fast2smsConfig: Fast2SMSConfig;
   onOpenTwilioSettings: () => void;
+  onOpenFast2SMSSettings: () => void;
   onStartDispatch: (
     items: DispatchItem[],
     title: string,
@@ -51,7 +55,9 @@ interface BulkSenderViewProps {
 export function BulkSenderView({
   contacts,
   twilioConfig,
+  fast2smsConfig,
   onOpenTwilioSettings,
+  onOpenFast2SMSSettings,
   onStartDispatch,
   onOpenPasteModal,
   onUploadFile,
@@ -59,7 +65,7 @@ export function BulkSenderView({
 }: BulkSenderViewProps) {
   const [target, setTarget] = useState<DispatchTarget>("all");
   const [channel, setChannel] = useState<DeliveryChannel>(
-    twilioConfig.accountSid ? "twilio" : "whatsapp_auto"
+    fast2smsConfig.apiKey ? "fast2sms" : twilioConfig.accountSid ? "twilio" : "whatsapp_auto"
   );
   const [metaPhoneId, setMetaPhoneId] = useState("");
   const [metaToken, setMetaToken] = useState("");
@@ -134,6 +140,10 @@ export function BulkSenderView({
 
   function handleLaunch() {
     if (targetedContacts.length === 0) return;
+    if (channel === "fast2sms" && !fast2smsConfig.apiKey) {
+      onOpenFast2SMSSettings();
+      return;
+    }
     if (channel === "twilio" && (!twilioConfig.accountSid || !twilioConfig.authToken)) {
       onOpenTwilioSettings();
       return;
@@ -186,7 +196,11 @@ export function BulkSenderView({
             <Smartphone size={15} /> Send Test SMS / WhatsApp First
           </button>
           <span className="badge-simulation">
-            {channel === "twilio" ? (
+            {channel === "fast2sms" ? (
+              <>
+                <Flame size={14} color="#ea580c" /> Fast2SMS India (~₹0.18/SMS)
+              </>
+            ) : channel === "twilio" ? (
               <>
                 <KeyRound size={14} color="#f22f46" /> Twilio Real Telecom ({twilioConfig.type.toUpperCase()})
               </>
@@ -291,6 +305,17 @@ export function BulkSenderView({
               <div className="channel-buttons-row">
                 <button
                   type="button"
+                  className={`channel-choice-btn ${channel === "fast2sms" ? "active-fast2sms" : ""}`}
+                  onClick={() => setChannel("fast2sms")}
+                >
+                  <Flame size={16} />
+                  <span>🇮🇳 Fast2SMS India (Cellular SMS ~₹0.18)</span>
+                  <span className="mini-badge-instant" style={{ background: "#ea580c", color: "#fff" }}>
+                    LOW-COST INDIA
+                  </span>
+                </button>
+                <button
+                  type="button"
                   className={`channel-choice-btn ${channel === "twilio" ? "active-twilio" : ""}`}
                   onClick={() => setChannel("twilio")}
                 >
@@ -334,6 +359,34 @@ export function BulkSenderView({
                   <span>Simulated Test Run</span>
                 </button>
               </div>
+
+              {channel === "fast2sms" && (
+                <div className="fast2sms-notice-box">
+                  <div className="twilio-notice-info">
+                    <div className="twilio-status-icon" style={{ color: fast2smsConfig.apiKey ? "#16a34a" : "#ea580c" }}>
+                      {fast2smsConfig.apiKey ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                    </div>
+                    <div>
+                      <strong>
+                        Fast2SMS Status: {fast2smsConfig.apiKey ? "Connected & Ready" : "API Key Required"}
+                      </strong>
+                      <p>
+                        {fast2smsConfig.apiKey
+                          ? `Route: ${fast2smsConfig.route === "q" ? "Quick SMS (Instant, No DLT needed)" : "DLT Route"} (Key: ${fast2smsConfig.apiKey.slice(0, 8)}...)`
+                          : "Send real cellular SMS across India (+91) for ~₹0.18 each. No DLT required on Quick SMS route."}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="button light"
+                    style={{ fontSize: 12, padding: "7px 14px", flexShrink: 0 }}
+                    onClick={onOpenFast2SMSSettings}
+                  >
+                    <Flame size={14} /> {fast2smsConfig.apiKey ? "Edit Fast2SMS Key" : "Connect Fast2SMS Key"}
+                  </button>
+                </div>
+              )}
 
               {channel === "twilio" && (
                 <div className="twilio-notice-box">
@@ -570,7 +623,9 @@ export function BulkSenderView({
             <ul className="dispatch-feature-checklist">
               <li>
                 <CheckCircle2 size={16} /> Delivery:{" "}
-                {channel === "twilio"
+                {channel === "fast2sms"
+                  ? "🇮🇳 Fast2SMS India Cellular (~₹0.18/SMS)"
+                  : channel === "twilio"
                   ? `🚀 Twilio Real Telecom (${twilioConfig.type.toUpperCase()})`
                   : channel === "whatsapp_auto"
                   ? "⚡ WhatsApp Auto-Send (Simultaneous)"
@@ -594,7 +649,9 @@ export function BulkSenderView({
 
             <button
               className={`button primary full-width launch-button ${
-                channel === "twilio"
+                channel === "fast2sms"
+                  ? "fast2sms-launch-btn"
+                  : channel === "twilio"
                   ? "twilio-launch-btn"
                   : channel === "whatsapp_auto"
                   ? "wa-auto-launch-btn"
@@ -605,7 +662,12 @@ export function BulkSenderView({
               disabled={targetedContacts.length === 0}
               onClick={handleLaunch}
             >
-              {channel === "twilio" ? (
+              {channel === "fast2sms" ? (
+                <>
+                  <Flame size={18} />
+                  🚀 Dispatch to All {targetedContacts.length} Contacts via Fast2SMS (~₹0.18/SMS)
+                </>
+              ) : channel === "twilio" ? (
                 <>
                   <Send size={18} />
                   🚀 Dispatch to All {targetedContacts.length} Contacts via Real Twilio {twilioConfig.type.toUpperCase()}

@@ -23,6 +23,7 @@ import {
   Download,
   FileSpreadsheet,
   Filter,
+  Flame,
   Inbox,
   KeyRound,
   LayoutDashboard,
@@ -47,7 +48,9 @@ import { LiveDispatchView } from "./components/LiveDispatchView";
 import { QuickPasteModal } from "./components/QuickPasteModal";
 import { SingleSenderModal } from "./components/SingleSenderModal";
 import { TwilioSettingsModal } from "./components/TwilioSettingsModal";
+import { Fast2SMSSettingsModal } from "./components/Fast2SMSSettingsModal";
 import { getSavedTwilioConfig, type TwilioConfig } from "./twilioService";
+import { getSavedFast2SMSConfig, type Fast2SMSConfig } from "./fast2smsService";
 import type {
   Activity,
   ConsentStatus,
@@ -245,6 +248,8 @@ export default function App() {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [showTwilioModal, setShowTwilioModal] = useState(false);
   const [twilioConfig, setTwilioConfig] = useState<TwilioConfig>(getSavedTwilioConfig);
+  const [showFast2SMSModal, setShowFast2SMSModal] = useState(false);
+  const [fast2smsConfig, setFast2SMSConfig] = useState<Fast2SMSConfig>(getSavedFast2SMSConfig);
   const [singleSendTarget, setSingleSendTarget] = useState<{ phone?: string; message?: string } | null>(null);
   const [activeDispatchRun, setActiveDispatchRun] = useState<DispatchRun | null>(null);
 
@@ -565,6 +570,14 @@ export default function App() {
             <button
               className="button secondary"
               style={{ gap: 6 }}
+              onClick={() => setShowFast2SMSModal(true)}
+              title="Configure low-cost Fast2SMS gateway (~₹0.18/SMS)"
+            >
+              <Flame size={15} color="#ea580c" /> Fast2SMS (~₹0.18)
+            </button>
+            <button
+              className="button secondary"
+              style={{ gap: 6 }}
               onClick={() => setShowTwilioModal(true)}
               title="Configure real Twilio telecom gateway credentials"
             >
@@ -599,7 +612,9 @@ export default function App() {
             <BulkSenderView
               contacts={contacts}
               twilioConfig={twilioConfig}
+              fast2smsConfig={fast2smsConfig}
               onOpenTwilioSettings={() => setShowTwilioModal(true)}
+              onOpenFast2SMSSettings={() => setShowFast2SMSModal(true)}
               onStartDispatch={handleStartDispatch}
               onOpenPasteModal={() => setShowPasteModal(true)}
               onUploadFile={() => inputRef.current?.click()}
@@ -684,6 +699,13 @@ export default function App() {
         <TwilioSettingsModal
           onClose={() => setShowTwilioModal(false)}
           onConfigSaved={setTwilioConfig}
+        />
+      )}
+
+      {showFast2SMSModal && (
+        <Fast2SMSSettingsModal
+          onClose={() => setShowFast2SMSModal(false)}
+          onConfigSaved={setFast2SMSConfig}
         />
       )}
 
