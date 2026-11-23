@@ -1,0 +1,13 @@
+MessageFlow dashboard
+
+This is a prebuilt static website.
+
+To run it locally:
+1. Extract this ZIP.
+2. Open the extracted folder in a terminal.
+3. Run: npx serve .
+4. Open the local URL shown in the terminal.
+
+For production, upload these files to any static host (Netlify, Vercel, Cloudflare Pages, or an S3-compatible host).
+
+The dashboard is a consent-first demo. It imports .xlsx and .csv files, deduplicates and filters contacts, supports a 10,000-contact view, and simulates the SMS queue. Configure a server-side provider integration before enabling live messaging or OTP delivery.
